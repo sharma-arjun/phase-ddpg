@@ -3,9 +3,9 @@ import copy
 import math
 import random
 import numpy as np
-from phase_lstm_multilayer import PLSTM
+from phase_lstm_multilayer_new import PLSTM
 from lstm import LSTM
-from mlp import MLP
+#from mlp import MLP
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -45,19 +45,19 @@ def create_targets(memory, q_vals, target_critic, target_actor, net_type, gamma=
 			a_prime = target_actor.forward(x_a_prime, phase_prime)
 			x_c_prime = Variable(torch.cat((a_prime.data.squeeze(0),s_prime),0), requires_grad=False).unsqueeze(0)
 			q_target[i,:] = memory[i][2] + gamma*target_critic.forward(x_c_prime, phase_prime).data*(1-float(memory[i][6]))
-		elif net_type == 3:
-			s_prime = torch.from_numpy(np.array(memory[i][3])).type(dtype)
-			s_prime = Variable(s_prime, requires_grad=False).unsqueeze(0)
-			a_prime = target_actor.forward(x_a_prime)
-			x_c_prime = Variable(torch.cat((a_prime.data.squeeze(0),s_prime),0), requires_grad=False).unsqueeze(0)
-			q_target[i,:] = memory[i][2] + gamma*target_critic.forward(x_c_prime).data*(1-float(memory[i][6]))
-		elif net_type == 4:
-			inp = np.concatenate((np.array(memory[i][3]), np.asarray([phase_prime])))
-			s_prime = torch.from_numpy(inp).type(dtype)
-			x_a_prime = Variable(s_prime, requires_grad=False).unsqueeze(0)
-			a_prime = target_actor.forward(x_a_prime)
-			x_c_prime = Variable(torch.cat((a_prime.data.squeeze(0),s_prime),0), requires_grad=False).unsqueeze(0)
-			q_target[i,:] = memory[i][2] + gamma*target_critic.forward(x_c_prime).data*(1-float(memory[i][6]))
+		#elif net_type == 3:
+		#	s_prime = torch.from_numpy(np.array(memory[i][3])).type(dtype)
+		#	s_prime = Variable(s_prime, requires_grad=False).unsqueeze(0)
+		#	a_prime = target_actor.forward(x_a_prime)
+		#	x_c_prime = Variable(torch.cat((a_prime.data.squeeze(0),s_prime),0), requires_grad=False).unsqueeze(0)
+		#	q_target[i,:] = memory[i][2] + gamma*target_critic.forward(x_c_prime).data*(1-float(memory[i][6]))
+		#elif net_type == 4:
+		#	inp = np.concatenate((np.array(memory[i][3]), np.asarray([phase_prime])))
+		#	s_prime = torch.from_numpy(inp).type(dtype)
+		#	x_a_prime = Variable(s_prime, requires_grad=False).unsqueeze(0)
+		#	a_prime = target_actor.forward(x_a_prime)
+		#	x_c_prime = Variable(torch.cat((a_prime.data.squeeze(0),s_prime),0), requires_grad=False).unsqueeze(0)
+		#	q_target[i,:] = memory[i][2] + gamma*target_critic.forward(x_c_prime).data*(1-float(memory[i][6]))
 
 	target_actor.reset()
 	target_critic.reset()
@@ -189,6 +189,7 @@ def main():
 		episode_experience = []
 		for j in range(max_episode_length):
 			phase = phase_obj.comp_phase()
+                        env.env.env.phase = phase
 			a = np.random.uniform(low=env.action_space.low, high=env.action_space.high, size=env_output_size)
 			s_prime, reward, terminal, info  = env.step(a)
 			episode_experience.append((s,a,reward,s_prime,phase,phase,terminal))
@@ -217,6 +218,7 @@ def main():
 
 		for j in range(max_episode_length):
 			phase = phase_obj.comp_phase()
+                        env.env.env.phase = phase
 			if net_type == 0:
 				x_a = Variable(torch.from_numpy(s).type(dtype), requires_grad=False).unsqueeze(0)
 				a = actor.forward(x_a)
@@ -248,6 +250,7 @@ def main():
 			# action to be selected after addition of random noise (Ornstein-Uhlenbeck).
 			a = np.clip(a.data.cpu().numpy() + noise.sample(i, n_episodes/2), env.action_space.low , env.action_space.high) # a is in numpy format now
 			s_prime, reward, terminal, info = env.step(a)
+                        s_prime = np.ndarray.flatten(s_prime)
 			total_reward += reward
 			episode_experience.append((s,a,reward,s_prime,phase,phase,terminal))
 			if terminal == True:
@@ -420,6 +423,7 @@ def main():
 	terminal = False
 	while terminal == False:
 		phase = phase_obj.comp_phase()
+                env.env.env.phase = phase
 		if net_type == 0:
 			x_a = Variable(torch.from_numpy(s).type(dtype), requires_grad=False).unsqueeze(0)
 			a = actor.forward(x_a).data.cpu().numpy()
