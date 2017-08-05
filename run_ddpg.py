@@ -1,7 +1,7 @@
 from collections import namedtuple
 import sys
 import gym
-import phase_envs.envs.AntEnv2 as AntEnv2
+#import phase_envs.envs.AntEnv2 as AntEnv2
 import torch.optim as optim
 
 from utils.random_process import OrnsteinUhlenbeckProcess
@@ -21,6 +21,7 @@ THETA = 0.15
 SIGMA = 0.2
 LOG_EVERY_N_EPS = 10
 SAVE_EVERY_N_EPS = 500
+MAX_EP_LENGTH = 200
 NET_TYPE = int(sys.argv[1])
 CHECKPOINT_NAME = sys.argv[2]
 
@@ -41,8 +42,8 @@ critic_optimizer_spec = OptimizerSpec(
     kwargs=dict(lr=CRITIC_LEARNING_RATE, weight_decay=Q_WEIGHT_DECAY),
 )
 
-#env = NormalizedEnv(gym.make('InvertedPendulum-v1'))
-env = NormalizedEnv(gym.make('Ant-v2'))
+env = NormalizedEnv(gym.make('Pendulum-v0'))
+#env = NormalizedEnv(gym.make('Ant-v2'))
 
 random_process = OrnsteinUhlenbeckProcess(theta=THETA, sigma=SIGMA, size=env.action_space.shape[0], sigma_min=0.05, n_steps_annealing=1000000)
 
@@ -66,5 +67,6 @@ stats = ddpg_learning(
     checkpoint_name=CHECKPOINT_NAME,
     gamma=GAMMA,
     log_every_n_eps=LOG_EVERY_N_EPS,
-    save_every_n_eps=SAVE_EVERY_N_EPS
+    save_every_n_eps=SAVE_EVERY_N_EPS,
+    max_ep_length=MAX_EP_LENGTH
 )

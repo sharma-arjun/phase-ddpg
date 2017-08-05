@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from itertools import product
 import gym
 from gym import wrappers
-import phase_envs.envs.AntEnv2 as AntEnv2
+#import phase_envs.envs.AntEnv2 as AntEnv2
 
 
 USE_CUDA = torch.cuda.is_available()
@@ -186,17 +186,20 @@ def main():
 	#Burn in with random policy
 	for i in range(burn_in):
 		phase_obj.reset()
+		phase = phase_obj.comp_phase()
 		episode_experience = []
 		for j in range(max_episode_length):
-			phase = phase_obj.comp_phase()
+			#phase = phase_obj.comp_phase()
                         env.env.env.phase = phase
 			a = np.random.uniform(low=env.action_space.low, high=env.action_space.high, size=env_output_size)
 			s_prime, reward, terminal, info  = env.step(a)
-			episode_experience.append((s,a,reward,s_prime,phase,phase,terminal))
+			phase_prime = phase_obj.comp_phase()
+			episode_experience.append((s,a,reward,s_prime,phase,phase_prime,terminal))
 			if terminal == True:
 				#print 'Reached goal state!'
 				break
 			s = s_prime
+			phase = phase_prime
 
 		M.add(episode_experience)
 		s = env.reset()
@@ -211,13 +214,14 @@ def main():
 		total_reward = 0
 		episode_experience = []
 		phase_obj.reset()
+		phase = phase_obj.comp_phase()
 
 		# zero gradients
 		optimizer_actor.zero_grad()
 		optimizer_critic.zero_grad()
 
 		for j in range(max_episode_length):
-			phase = phase_obj.comp_phase()
+			#phase = phase_obj.comp_phase()
                         env.env.env.phase = phase
 			if net_type == 0:
 				x_a = Variable(torch.from_numpy(s).type(dtype), requires_grad=False).unsqueeze(0)
@@ -251,13 +255,15 @@ def main():
 			a = np.clip(a.data.cpu().numpy() + noise.sample(i, n_episodes/2), env.action_space.low , env.action_space.high) # a is in numpy format now
 			s_prime, reward, terminal, info = env.step(a)
                         s_prime = np.ndarray.flatten(s_prime)
+			phase_prime = phase_obj.comp_phase()
 			total_reward += reward
-			episode_experience.append((s,a,reward,s_prime,phase,phase,terminal))
+			episode_experience.append((s,a,reward,s_prime,phase,phase_prime,terminal))
 			if terminal == True:
 				#print 'Reached goal state!'
 				break
 			#q_vals.append(q)
 			s = s_prime
+			phase = phase_prime
 
 		M.add(episode_experience)
 		#print 'Episode lasted for %d steps.' % (j+1)

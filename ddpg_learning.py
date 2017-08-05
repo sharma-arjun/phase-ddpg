@@ -43,7 +43,8 @@ def ddpg_learning(
     checkpoint_name,
     gamma=0.99,
     log_every_n_eps=10,
-    save_every_n_eps=500
+    save_every_n_eps=500,
+    max_ep_length=200
     ):
 
     """The Deep Deterministic Policy Gradient algorithm.
@@ -106,7 +107,7 @@ def ddpg_learning(
             agent.replay_memory.push(state, action, reward, next_state, phase, next_phase, done)
             # Update
             agent.update(net_type, gamma)
-            if done:
+            if done or t == max_ep_length:
                 stats.episode_lengths.append(episode_length)
                 stats.episode_rewards.append(episode_reward)
                 mean_reward = np.mean(stats.episode_rewards[-100:])
