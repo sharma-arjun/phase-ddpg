@@ -22,7 +22,7 @@ class Phase():
         if self.timer == 0:
             self.phase = random.choice(self.phase_list)
             self.timer += 1
-        elif self.timer == 30:
+        elif self.timer == 2:
             self.phase = random.choice(self.phase_list)
             self.timer = 1
         else:
@@ -82,13 +82,14 @@ def ddpg_learning(
         state = env.reset()
         random_process.reset_states()
         phase_obj.reset()
+        phase = phase_obj.comp_phase()
 
         episode_reward = 0
         episode_length = 0
 
         for t in count(1):
             #print 't', t
-            phase = phase_obj.comp_phase()
+            #phase = phase_obj.comp_phase()
             env.env.env.phase = phase
             action = agent.select_action(state, phase, net_type).squeeze(0).numpy()
             # Add noise for exploration
@@ -96,12 +97,13 @@ def ddpg_learning(
             action += noise
             action = np.clip(action, -1.0, 1.0)
             next_state, reward, done, _ = env.step(action)
+            next_phase = phase_obj.comp_phase()
             # Update statistics
             total_timestep += 1
             episode_reward += reward
             episode_length = t
             # Store transition in replay memory
-            agent.replay_memory.push(state, action, reward, next_state, phase, phase, done)
+            agent.replay_memory.push(state, action, reward, next_state, phase, next_phase, done)
             # Update
             agent.update(net_type, gamma)
             if done:
@@ -112,6 +114,8 @@ def ddpg_learning(
                 break
             else:
                 state = next_state
+                phase = next_phase
+
 
         if i_episode % log_every_n_eps == 0:
             #pass
