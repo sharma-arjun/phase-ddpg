@@ -1,7 +1,6 @@
 from collections import namedtuple
 import sys
 import gym
-#import phase_envs.envs.AntEnv2 as AntEnv2
 import torch.optim as optim
 
 from utils.random_process import OrnsteinUhlenbeckProcess
@@ -56,9 +55,7 @@ critic_optimizer_spec_2 = OptimizerSpec(
 )
 
 env = NormalizedEnv(gym.make('Hopper-v1'))
-#env = NormalizedEnv(gym.make('Ant-v2'))
 
-#random_process = OrnsteinUhlenbeckProcess(theta=THETA, sigma=SIGMA, size=env.action_space.shape[0], sigma_min=0.05, n_steps_annealing=1000000)
 random_process = OrnsteinUhlenbeckProcess(theta=THETA, sigma=SIGMA, size=env.action_space.shape[0])
 
 agent1 = DDPG(

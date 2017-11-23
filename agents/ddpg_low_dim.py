@@ -10,8 +10,8 @@ import torch.autograd as autograd
 from utils.replay_memory import ReplayMemory, Transition
 from mlp_actor import MLP as MLPA
 from mlp_critic import MLP as MLPC
-from phase_mlp_multilayer_new_fast_actor import PMLP as PMLPA
-from phase_mlp_multilayer_new_fast_critic import PMLP as PMLPC
+from phase_mlp_actor import PMLP as PMLPA
+from phase_mlp_critic import PMLP as PMLPC
 
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
@@ -21,60 +21,6 @@ class Variable(autograd.Variable):
         if USE_CUDA:
             data = data.cuda()
         super(Variable, self).__init__(data, *args, **kwargs)
-
-def init_fanin(tensor):
-    fanin = tensor.size(1)
-    v = 1.0 / np.sqrt(fanin)
-    init.uniform(tensor, -v, v)
-
-class Actor(nn.Module):
-    def __init__(self, num_feature, num_action):
-        """
-        Initialize a Actor for low dimensional environment.
-            num_feature: number of features of input.
-            num_action: number of available actions in the environment.
-        """
-        super(Actor, self).__init__()
-        self.fc1 = nn.Linear(num_feature, 400)
-        init_fanin(self.fc1.weight)
-        self.fc2 = nn.Linear(400, 300)
-        init_fanin(self.fc2.weight)
-        self.fc3 = nn.Linear(300, num_action)
-        init.uniform(self.fc3.weight, -3e-3, 3e-3)
-        init.uniform(self.fc3.bias, -3e-3, 3e-3)
-
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.tanh(self.fc3(x))
-        return x
-
-class Critic(nn.Module):
-    def __init__(self, num_feature, num_action):
-        """
-        Initialize a Critic for low dimensional environment.
-            num_feature: number of features of input.
-
-        """
-        super(Critic, self).__init__()
-        self.fc1 = nn.Linear(num_feature, 400)
-        init_fanin(self.fc1.weight)
-        # Actions were not included until the 2nd hidden layer of Q.
-        self.fc2 = nn.Linear(400 + num_action, 300)
-        init_fanin(self.fc2.weight)
-        self.fc3 = nn.Linear(300, 1)
-        init.uniform(self.fc3.weight, -3e-3, 3e-3)
-        init.uniform(self.fc3.bias, -3e-3, 3e-3)
-
-
-    def forward(self, states, actions):
-        x = F.relu(self.fc1(states))
-        # Actions were not included until the 2nd hidden layer of Q.
-        x = torch.cat((x, actions), 1)
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
 
 class DDPG():
     """
@@ -113,10 +59,6 @@ class DDPG():
         self.batch_size = batch_size
         self.tau = tau
         # Construct actor and critic
-        #self.actor = Actor(num_feature, num_action).type(dtype)
-        #self.target_actor = Actor(num_feature, num_action).type(dtype)
-        #self.critic = Critic(num_feature, num_action).type(dtype)
-        #self.target_critic = Critic(num_feature, num_action).type(dtype)
 
         if net_type == 0:
                 self.actor = MLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), n_layers=2, tanh_flag=1).type(dtype)
@@ -133,8 +75,6 @@ class DDPG():
                 self.target_actor = PMLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), dtype=dtype, n_layers=2, tanh_flag=1).type(dtype)
                 self.critic = PMLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), dtype=dtype, n_layers=2).type(dtype)
                 self.target_critic = PMLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), dtype=dtype, n_layers=2).type(dtype)
-
-
 
 
         # Construct the optimizers for actor and critic

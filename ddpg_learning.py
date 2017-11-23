@@ -12,37 +12,11 @@ import torch.autograd as autograd
 from utils.replay_memory import ReplayMemory
 from utils import plotting
 
-def compute_friction(f, t):
-    f[0,0] = 3*abs(math.sin((t)*math.pi/1000))
-    return f
-
 class Phase():
     def __init__(self):
-        #self.phase_list = [0, math.pi/2, math.pi, 3*math.pi/2]
         self.n = 32
         #self.l = np.linspace(1,1.6,self.n/2) #hopper
         self.l = np.linspace(0.8,2.0,(self.n+2)/2) #walker
-        #self.timer = 500
-        self.timer = 0
-
-    #def comp_phase(self):
-
-    #    if self.timer == 0:
-    #        self.phase = random.choice(self.phase_list)
-    #        self.timer += 1
-    #    elif self.timer == 2:
-    #        self.phase = random.choice(self.phase_list)
-    #        self.timer = 1
-    #    else:
-    #        self.timer +=1
-
-    #    return self.phase
-
-    #def comp_phase(self):
-    #    self.phase = (self.timer % 96)*math.pi/48
-    #    self.timer += 1
-    #    return self.phase
-
 
     # hopper
     #def comp_phase(self, height, vel):
@@ -59,11 +33,6 @@ class Phase():
 
     #    return phase
 
-    #def comp_phase(self):
-    #    phase = (2*self.timer*math.pi)/1000
-    #    self.timer = (self.timer + 1) % 1000
-
-    #    return phase
 
     # walker
     def comp_phase(self, height, vel):
@@ -144,17 +113,11 @@ def ddpg_learning(
         random_process.reset_states()
         phase_obj.reset()
         phase = phase_obj.comp_phase(env.env.env.model.data.qpos[1,0], env.env.env.model.data.qvel[1,0])
-	#phase = phase_obj.comp_phase()
 
         episode_reward = 0
         episode_length = 0
 
         for t in count(1):
-            #print 't', t
-            #phase = phase_obj.comp_phase()
-            #env.env.env.phase = phase
-            #fric = compute_friction(np.copy(env.env.env.model.geom_friction), phase_obj.timer)
-            #env.env.env.model.geom_friction = fric    
             action = agent.select_action(state, phase, net_type).squeeze(0).numpy()
             # Add noise for exploration
             noise = random_process.sample()
@@ -162,7 +125,6 @@ def ddpg_learning(
             action = np.clip(action, -1.0, 1.0)
             next_state, reward, done, _ = env.step(action)
             next_phase = phase_obj.comp_phase(env.env.env.model.data.qpos[1,0], env.env.env.model.data.qvel[1,0])
-            #next_phase = phase_obj.comp_phase()
             # Update statistics
             total_timestep += 1
             episode_reward += reward
@@ -191,7 +153,6 @@ def ddpg_learning(
             print("TOTAL TIMESTEPS SO FAR: %d" % (total_timestep))
 
             f.write(str(mean_reward) + ' ' + str(total_timestep) + '\n')
-            #plotting.plot_episode_stats(stats)
 
         if (i_episode + 1) % save_every_n_eps == 0:
             f_w = open('/mnt/sdb1/arjun/phase-ddpg/checkpoints/' + checkpoint_name + '_' + str(i_episode+1) + '_' + str(mean_reward)  + '.pth','wb')
