@@ -95,8 +95,8 @@ def ddpg_learning(
     total_timestep = 0
 
     phase_obj = Phase()
-    print 'Writing to /mnt/sdb1/arjun/phase-ddpg/plotfiles/' + checkpoint_name + '.txt'
-    f = open('/mnt/sdb1/arjun/phase-ddpg/plotfiles/' + checkpoint_name + '.txt', 'w')
+    print 'Writing to plotfiles/' + checkpoint_name + '.txt'
+    f = open('plotfiles/' + checkpoint_name + '.txt', 'w')
 
     agent = agent1
 
@@ -155,7 +155,7 @@ def ddpg_learning(
             f.write(str(mean_reward) + ' ' + str(total_timestep) + '\n')
 
         if (i_episode + 1) % save_every_n_eps == 0:
-            f_w = open('/mnt/sdb1/arjun/phase-ddpg/checkpoints/' + checkpoint_name + '_' + str(i_episode+1) + '_' + str(mean_reward)  + '.pth','wb')
+            f_w = open('checkpoints/' + checkpoint_name + '_' + str(i_episode+1) + '_' + str(mean_reward)  + '.pth','wb')
 	    torch.save(agent,f_w)
 
     f.close()
