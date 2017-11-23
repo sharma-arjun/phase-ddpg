@@ -8,8 +8,10 @@ import torch.nn.functional as F
 import torch.autograd as autograd
 
 from utils.replay_memory import ReplayMemory, Transition
-from mlp import MLP
-from phase_mlp_multilayer_new import PMLP
+from mlp_actor import MLP as MLPA
+from mlp_critic import MLP as MLPC
+from phase_mlp_multilayer_new_fast_actor import PMLP as PMLPA
+from phase_mlp_multilayer_new_fast_critic import PMLP as PMLPC
 
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
@@ -117,20 +119,23 @@ class DDPG():
         #self.target_critic = Critic(num_feature, num_action).type(dtype)
 
         if net_type == 0:
-                self.actor = MLP(input_size=num_feature, output_size=num_action, hidden_size=300, n_layers=2, tanh_flag=1).type(dtype)
-                self.target_actor = MLP(input_size=num_feature, output_size=num_action, hidden_size=300, n_layers=2, tanh_flag=1).type(dtype)
-                self.critic = MLP(input_size=num_feature+num_action, output_size=1, hidden_size=300, n_layers=2).type(dtype)
-                self.target_critic = MLP(input_size=num_feature+num_action, output_size=1, hidden_size=300, n_layers=2).type(dtype)
+                self.actor = MLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), n_layers=2, tanh_flag=1).type(dtype)
+                self.target_actor = MLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), n_layers=2, tanh_flag=1).type(dtype)
+                self.critic = MLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), n_layers=2).type(dtype)
+                self.target_critic = MLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), n_layers=2).type(dtype)
         elif net_type == 1:
-                self.actor = MLP(input_size=num_feature+1, output_size=num_action, hidden_size=300, n_layers=2, tanh_flag=1).type(dtype)
-                self.target_actor = MLP(input_size=num_feature+1, output_size=num_action, hidden_size=300, n_layers=2, tanh_flag=1).type(dtype)
-                self.critic = MLP(input_size=num_feature+num_action+1, output_size=1, hidden_size=300, n_layers=2).type(dtype)
-                self.target_critic = MLP(input_size=num_feature+num_action+1, output_size=1, hidden_size=300, n_layers=2).type(dtype)
+                self.actor = MLPA(input_size=num_feature+1, output_size=num_action, hidden_size=(400,300), n_layers=2, tanh_flag=1).type(dtype)
+                self.target_actor = MLPA(input_size=num_feature+1, output_size=num_action, hidden_size=(400,300), n_layers=2, tanh_flag=1).type(dtype)
+                self.critic = MLPC(input_size_state=num_feature+1, input_size_action=num_action, output_size=1, hidden_size=(400,300), n_layers=2).type(dtype)
+                self.target_critic = MLPC(input_size_state=num_feature+1, input_size_action=num_action, output_size=1, hidden_size=(400,300), n_layers=2).type(dtype)
         elif net_type == 2:
-                self.actor = PMLP(input_size=num_feature, output_size=num_action, hidden_size=300, dtype=dtype, n_layers=2, tanh_flag=1).type(dtype)
-                self.target_actor = PMLP(input_size=num_feature, output_size=num_action, hidden_size=300, dtype=dtype, n_layers=2, tanh_flag=1).type(dtype)
-                self.critic = PMLP(input_size=num_feature+num_action, output_size=1, hidden_size=300, dtype=dtype, n_layers=2).type(dtype)
-                self.target_critic = PMLP(input_size=num_feature+num_action, output_size=1, hidden_size=300, dtype=dtype, n_layers=2).type(dtype)
+                self.actor = PMLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), dtype=dtype, n_layers=2, tanh_flag=1).type(dtype)
+                self.target_actor = PMLPA(input_size=num_feature, output_size=num_action, hidden_size=(400,300), dtype=dtype, n_layers=2, tanh_flag=1).type(dtype)
+                self.critic = PMLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), dtype=dtype, n_layers=2).type(dtype)
+                self.target_critic = PMLPC(input_size_state=num_feature, input_size_action=num_action, output_size=1, hidden_size=(400,300), dtype=dtype, n_layers=2).type(dtype)
+
+
+
 
         # Construct the optimizers for actor and critic
         self.actor_optimizer = actor_optimizer_spec.constructor(self.actor.parameters(), **actor_optimizer_spec.kwargs)
@@ -138,16 +143,47 @@ class DDPG():
         # Construct the replay memory
         self.replay_memory = ReplayMemory(replay_memory_size)
 
+
+    def copy_weights_for_finetune(self, weight_files):
+        # hard coded for finetuning ...
+
+		# copy actor
+	for lin_layer, weight_file in zip(self.actor.control_hidden_list[0], weight_files):
+        	agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.actor.l1.state_dict())
+
+	for lin_layer, weight_file in zip(self.actor.control_hidden_list[1], weight_files):
+		agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.actor.l2.state_dict())
+
+	for lin_layer, weight_file in zip(self.actor.control_h2o_list, weight_files):
+		agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.actor.h2o.state_dict())
+
+
+	# copy critic
+	for lin_layer, weight_file in zip(self.critic.control_hidden_list[0], weight_files):
+	        agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.critic.l1.state_dict())
+
+	for lin_layer, weight_file in zip(self.critic.control_hidden_list[1], weight_files):
+        	agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.critic.l2.state_dict())
+
+	for lin_layer, weight_files in zip(self.critic.control_h2o_list, weight_files):
+	        agent = torch.load(weight_file)
+	        lin_layer.load_state_dict(agent.critic.h2o.state_dict())
+
     def select_action(self, state, phase, net_type):
         state = torch.from_numpy(state).type(dtype).unsqueeze(0)
+        phase = torch.from_numpy(np.array([phase])).type(dtype).unsqueeze(0)
         if net_type == 0:
                 action = self.actor(Variable(state, volatile=True)).data.cpu()
         elif net_type == 1:
-                phase = torch.from_numpy(np.array([phase])).type(dtype).unsqueeze(0)
                 action = self.actor(Variable(torch.cat((state,phase),1), volatile=True)).data.cpu()
         elif net_type == 2:
-                action = self.actor(Variable(state, volatile=True), phase).data.cpu()
-                self.actor.reset()
+                action = self.actor(Variable(state, volatile=True), Variable(phase, volatile=True)).data.cpu()
+                #self.actor.reset()
 
         return action
 
@@ -188,34 +224,23 @@ class DDPG():
             # Compute the target of the current Q values
             target_Q_values = reward_batch + (gamma * next_Q_values)
             # Compute Bellman error (using Huber loss)
-            critic_loss = F.smooth_l1_loss(current_Q_values, target_Q_values)
-	    #critic_loss = F.mse_loss(current_Q_values, target_Q_values)
+            #critic_loss = F.smooth_l1_loss(current_Q_values, target_Q_values)
+	    critic_loss = F.mse_loss(current_Q_values, target_Q_values)
             # Optimize the critic
             critic_loss.backward()
             self.critic_optimizer.step()
 
-
         elif net_type == 2:
-            for b in range(self.batch_size):
-                current_Q_value = self.critic(torch.cat((state_batch[b,:], action_batch[b,:]),0).unsqueeze(0), float(phase_batch[b,0].data.cpu().numpy()))
-                target_action = self.target_actor(next_state_batch[b,:].unsqueeze(0), float(next_phase_batch[b,0].data.cpu().numpy()))
-                next_max_q = self.target_critic(torch.cat((next_state_batch[b,:].unsqueeze(0), target_action),1), float(next_phase_batch[b,0].data.cpu().numpy())).detach().max(1)[0]
-                next_Q_value = not_done_mask[b] * next_max_q
-                target_Q_value = reward_batch[b] + (gamma * next_Q_value)
-                critic_loss = F.smooth_l1_loss(current_Q_value, target_Q_value)
-                critic_loss.backward()
-                # Update gradients for control points
-                self.critic.update_control_gradients()
-                self.critic.reset()
-                self.target_actor.reset()
-                self.target_critic.reset()
-
-        
-            # Take mean of gradients
-            for p in self.critic.parameters():
-                p.grad.data /= self.batch_size
+            current_Q_values = self.critic(torch.cat((state_batch, action_batch),1), phase_batch)
+            target_actions = self.target_actor(next_state_batch, next_phase_batch)
+            next_max_q = self.target_critic(torch.cat((next_state_batch, target_actions),1), next_phase_batch).detach().max(1)[0]
+            next_Q_values = not_done_mask * next_max_q
+            target_Q_values = reward_batch + (gamma * next_Q_values)
+            critic_loss = F.mse_loss(current_Q_values, target_Q_values)
+            critic_loss.backward()
             # Optimize the critic
             self.critic_optimizer.step()
+
 
         ### Actor ###
         self.actor_optimizer.zero_grad()
@@ -229,20 +254,10 @@ class DDPG():
             actor_loss.backward()
             self.actor_optimizer.step()
 
+
         elif net_type == 2:
-            for b in range(self.batch_size):
-                p = float(phase_batch[b,0].data.cpu().numpy())
-                s = state_batch[b,:].unsqueeze(0)
-                actor_loss = -self.critic(torch.cat((s, self.actor(s,p)),1),p).mean()
-                actor_loss.backward()
-                # Update gradients for control points
-                self.actor.update_control_gradients()
-                self.actor.reset()
-                self.critic.reset()
-        
-            # Take mean of the gradients
-            for p in self.actor.parameters():
-                p.grad.data /= self.batch_size
+            actor_loss = -self.critic(torch.cat((state_batch, self.actor(state_batch, phase_batch)),1), phase_batch).mean()
+            actor_loss.backward()
 
             # Optimize the actor
             self.actor_optimizer.step()

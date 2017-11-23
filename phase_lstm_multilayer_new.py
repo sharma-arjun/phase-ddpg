@@ -4,6 +4,7 @@ import numpy as np
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
+import torch.nn.init as init
 
 
 def kn(p, n):
@@ -69,6 +70,15 @@ class PLSTM(nn.Module):
 		self.h2o_2 = nn.Linear(self.hidden_size, self.output_size).type(dtype)
 		self.gru_30 = nn.GRUCell(self.input_size, self.hidden_size).type(dtype)
 		self.h2o_3 = nn.Linear(self.hidden_size, self.output_size).type(dtype)
+
+                init.uniform(self.h2o_0.weight,-3e-3, 3e-3)
+                init.uniform(self.h2o_0.bias,-3e-3, 3e-3)
+                init.uniform(self.h2o_1.weight,-3e-3, 3e-3)
+                init.uniform(self.h2o_1.bias,-3e-3, 3e-3)
+                init.uniform(self.h2o_2.weight,-3e-3, 3e-3)
+                init.uniform(self.h2o_2.bias,-3e-3, 3e-3)
+                init.uniform(self.h2o_3.weight,-3e-3, 3e-3)
+                init.uniform(self.h2o_3.bias,-3e-3, 3e-3)
 
 		if n_layers == 2:
 			
