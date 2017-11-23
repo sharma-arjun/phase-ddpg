@@ -123,7 +123,6 @@ class DDPG():
                 action = self.actor(Variable(torch.cat((state,phase),1), volatile=True)).data.cpu()
         elif net_type == 2:
                 action = self.actor(Variable(state, volatile=True), Variable(phase, volatile=True)).data.cpu()
-                #self.actor.reset()
 
         return action
 
@@ -156,7 +155,6 @@ class DDPG():
                 current_Q_values = self.critic(torch.cat((state_batch, phase_batch, action_batch),1))
                 # Compute next Q value based on which action target actor would choose
                 # Detach variable from the current graph since we don't want gradients for next Q to propagated
-                #target_actions = self.target_actor(torch.cat((state_batch, phase_batch),1)) shouldn't it be next_state_batch, next_phase_batch
                 target_actions = self.target_actor(torch.cat((next_state_batch, next_phase_batch),1))
                 next_max_q = self.target_critic(torch.cat((next_state_batch, next_phase_batch, target_actions),1)).detach().max(1)[0]
 
@@ -164,7 +162,6 @@ class DDPG():
             # Compute the target of the current Q values
             target_Q_values = reward_batch + (gamma * next_Q_values)
             # Compute Bellman error (using Huber loss)
-            #critic_loss = F.smooth_l1_loss(current_Q_values, target_Q_values)
 	    critic_loss = F.mse_loss(current_Q_values, target_Q_values)
             # Optimize the critic
             critic_loss.backward()
